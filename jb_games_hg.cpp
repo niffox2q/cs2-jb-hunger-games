@@ -39,7 +39,8 @@ std::map<std::string, std::string> phrases;
 // =========================================
 // CONFIG VARS
 // =========================================
-
+bool g_bEnableGuardGodMode;
+bool g_bGuardNoDamage;
 
 //==========================================
 // HELPERS
@@ -55,6 +56,22 @@ ConVarRefAbstract* FindConVar(const char* sCvarName)
 // CONFIGS 
 // =========================================
 
+void LoadConfig() {
+    KeyValues* config = new KeyValues("Config");
+    const char* path = "addons/configs/Jailbreak/hunger_games.ini";
+    if (!config->LoadFromFile(g_pFullFileSystem, path)) {
+        utils->ErrorLog("%s Failed to load: %s",g_PLAPI->GetLogTag(), path);
+        delete config;
+        return;
+        
+    }
+
+    g_bEnableGuardGodMode = config->GetBool("GuardGodmode",false);
+    g_bGuardNoDamage      = config->GetBool("GuardNoDamage",true);
+    
+
+    delete config;
+}
 
 void LoadTranslations() {
     phrases.clear();
@@ -133,10 +150,36 @@ void ClearAllWeapons(){
     }
 }
 
+void TurnOffHungerGames(){
+    bHungerGamesEnabled = false;
+    ClearAllWeapons();
+}
+
+void TurnOffMenu(int iSlot){
+    if (jailbreak_api->GetWarden() != iSlot) return;
+    Menu hMenu;
+    menus_api->SetTitleMenu(hMenu,GetTranslation("HungerGames_YouSureTurnOff"));
+    menus_api->AddItemMenu(hMenu,"yes",GetTranslation("HungerGames_YesButton"),ITEM_DEFAULT);
+    menus_api->AddItemMenu(hMenu,"",GetTranslation("HungerGames_NoButton"),ITEM_DEFAULT);
+    menus_api->SetExitMenu(hMenu,true);
+    menus_api->SetCallback(hMenu,[](const char* szBack, const char* szFront, int iItem, int iSlot){
+        if (!szBack || szBack[0] == '\0') return;
+        if (strcmp(szBack,"yes") == 0) {
+            TurnOffHungerGames();
+            menus_api->ClosePlayerMenu(iSlot);
+            return;
+        } else {
+            menus_api->ClosePlayerMenu(iSlot);
+        }
+    }); 
+    menus_api->DisplayPlayerMenu(hMenu,iSlot,true,true);
+}
+
+
 void OnHungyGamesButton(int iSlot){
     if (jailbreak_api->GetWarden() != iSlot) return;
     if (bHungerGamesEnabled) {
-        PrintSlotPrefixed(iSlot,GetTranslation("HungerGames_AlreadyStarted"));
+        TurnOffMenu(iSlot);
         return;
     }
     Menu hMenu;
@@ -201,6 +244,12 @@ bool jb_games_hg::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, b
     return true;
 }
 
+CON_COMMAND_F(mm_hungergames_reload,"Ooo",FCVAR_CLIENT_CAN_EXECUTE){
+    LoadConfig();
+    LoadTranslations();
+    META_CONPRINTF("Success\n");
+}
+
 
 
 void jb_games_hg::AllPluginsLoaded() {
@@ -236,6 +285,7 @@ void jb_games_hg::AllPluginsLoaded() {
 
 
     LoadTranslations();
+    LoadConfig();
 
     jailbreak_api->RegisterGameFeature(g_PLID,"hungrygames",GetTranslation("Game_HungryGames"),OnHungyGamesButton);
     utils->HookEvent(g_PLID,"round_start",[](const char* szName, IGameEvent* pEvent, bool bDontBroadcast){
@@ -250,6 +300,29 @@ void jb_games_hg::AllPluginsLoaded() {
 
     }); 
 
+    utils->HookOnTakeDamagePre(g_PLID, [](int iSlot, CTakeDamageInfo *pInfo) {
+        if (!bHungerGamesEnabled) return true;
+
+        if (g_bEnableGuardGodMode) {
+            auto pController = CCSPlayerController::FromSlot(iSlot);
+            if (pController && pController->GetTeam() == CS_TEAM_CT) return false;
+        }
+
+        if (g_bGuardNoDamage) {
+            auto AttackerHandle = pInfo->m_hAttacker.Get();
+            if (AttackerHandle.IsValid()) {
+                auto attacker = AttackerHandle.Get();
+                if (attacker) {
+                    auto AttackerEntity = (CBaseEntity*)attacker;
+                    if (AttackerEntity) {
+                        if (AttackerEntity->GetTeam() == CS_TEAM_CT) return false;
+                    }
+                }
+            }
+        }
+        return true;
+    });
+
     jailbreak_api->OnGiveLR(g_PLID,[](int iSlot){
         if (bHungerGamesEnabled) {
             ClearAllWeapons();
@@ -259,6 +332,11 @@ void jb_games_hg::AllPluginsLoaded() {
             }
             bHungerGamesEnabled = false;
             delete FFCvar;
+            auto pController = CCSPlayerController::FromSlot(iSlot);
+            if (!pController) return;
+            char msg[256];
+            g_SMAPI->Format(msg,sizeof(msg),GetTranslation("HungerGames_WinnerDetected"),pController->GetPlayerName());
+            PrintAllPrefixed(msg);
         }
     });
 
@@ -284,4 +362,4 @@ const char* jb_games_hg::GetLicense() { return "Private"; }
 const char* jb_games_hg::GetLogTag() { return "[JB] Hunger Games"; }
 const char* jb_games_hg::GetName() { return "[JB] Hunger Games"; }
 const char* jb_games_hg::GetURL() { return "https://t.me/niffox_2q"; }
-const char* jb_games_hg::GetVersion() { return "1.0.0"; }
+const char* jb_games_hg::GetVersion() { return "1.0.1"; }
