@@ -367,4 +367,4 @@ const char* jb_games_hg::GetLicense() { return "Private"; }
 const char* jb_games_hg::GetLogTag() { return "[JB] Hunger Games"; }
 const char* jb_games_hg::GetName() { return "[JB] Hunger Games"; }
 const char* jb_games_hg::GetURL() { return "https://t.me/niffox_2q"; }
-const char* jb_games_hg::GetVersion() { return "1.0.1"; }
+const char* jb_games_hg::GetVersion() { return "1.0.2"; }
