@@ -153,6 +153,11 @@ void ClearAllWeapons(){
 void TurnOffHungerGames(){
     bHungerGamesEnabled = false;
     ClearAllWeapons();
+    ConVarRefAbstract* FFCvar = FindConVar("mp_teammates_are_enemies");
+    if (FFCvar) {
+        FFCvar->SetBool(false);
+        delete FFCvar;
+    }
 }
 
 void TurnOffMenu(int iSlot){
@@ -160,7 +165,7 @@ void TurnOffMenu(int iSlot){
     Menu hMenu;
     menus_api->SetTitleMenu(hMenu,GetTranslation("HungerGames_YouSureTurnOff"));
     menus_api->AddItemMenu(hMenu,"yes",GetTranslation("HungerGames_YesButton"),ITEM_DEFAULT);
-    menus_api->AddItemMenu(hMenu,"",GetTranslation("HungerGames_NoButton"),ITEM_DEFAULT);
+    menus_api->AddItemMenu(hMenu,"no",GetTranslation("HungerGames_NoButton"),ITEM_DEFAULT);
     menus_api->SetExitMenu(hMenu,true);
     menus_api->SetCallback(hMenu,[](const char* szBack, const char* szFront, int iItem, int iSlot){
         if (!szBack || szBack[0] == '\0') return;
