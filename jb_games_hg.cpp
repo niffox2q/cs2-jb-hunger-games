@@ -119,6 +119,24 @@ void PrintAllPrefixed(const char* content) {
 // OTHER
 // =========================================
 
+void ClearDroppedWeapons() {
+    if (!g_pEntitySystem) return;
+    CEntityIdentity* pEnt = g_pEntitySystem->m_EntityList.m_pFirstActiveEntity;
+    for (; pEnt; pEnt = pEnt->m_pNext) {
+
+        auto pInstance = pEnt->m_pInstance;
+        CBaseEntity* pEntity = (CBaseEntity*)pInstance;
+
+        const char* classname = pEntity->m_pEntity->m_designerName.String();
+        
+        if (!classname || strncmp(classname, "weapon_", 7) != 0) continue;
+
+        if (pEntity->m_hOwnerEntity.Get().IsValid()) continue; 
+
+        utils->RemoveEntity(pEntity); 
+    }
+}
+
 void GiveAllTWeapons(std::string sWeaponName){
     for (int i = 0; i < MAX_PLAYERS; i++){
         auto pController = CCSPlayerController::FromSlot(i);
@@ -158,6 +176,8 @@ void TurnOffHungerGames(){
         FFCvar->SetBool(false);
         delete FFCvar;
     }
+
+    ClearDroppedWeapons();
 }
 
 void TurnOffMenu(int iSlot){
@@ -367,4 +387,4 @@ const char* jb_games_hg::GetLicense() { return "Private"; }
 const char* jb_games_hg::GetLogTag() { return "[JB] Hunger Games"; }
 const char* jb_games_hg::GetName() { return "[JB] Hunger Games"; }
 const char* jb_games_hg::GetURL() { return "https://t.me/niffox_2q"; }
-const char* jb_games_hg::GetVersion() { return "1.0.2"; }
+const char* jb_games_hg::GetVersion() { return "1.0.3"; }
